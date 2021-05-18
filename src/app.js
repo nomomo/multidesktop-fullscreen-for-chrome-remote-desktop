@@ -24,7 +24,15 @@ console.info("Start app window");
 document.addEventListener("DOMContentLoaded", function () {
     // App options.
     var options = {
-        url: ""
+        url: "",
+        resWidthAuto:true,
+        resWidth:3840,
+        resHeightAuto:true,
+        resHeight:1080,
+        posTopAuto:true,
+        posTop:0,
+        posLeftAuto:true,
+        posLeft:0
     };
     // App info - passed in from "main.js".
     var appInfo = {};
@@ -44,6 +52,16 @@ document.addEventListener("DOMContentLoaded", function () {
     var optionsResetButton = document.getElementById("optionsResetButton");
     var status = document.getElementById("status");
     var homePageUrlInput = document.getElementById("homePageUrlInput");
+    var optionWidthResolutionAuto = document.getElementById("optionWidthResolutionAuto");
+    var optionResolutionWidth = document.getElementById("optionResolutionWidth");
+    var optionHeightResolutionAuto = document.getElementById("optionHeightResolutionAuto");
+    var optionResolutionHeight = document.getElementById("optionResolutionHeight");
+    var optionPosTopAuto = document.getElementById("optionPosTopAuto");
+    var optionPosTop = document.getElementById("optionPosTop");
+    var optionPosLeftAuto = document.getElementById("optionPosLeftAuto");
+    var optionPosLeft = document.getElementById("optionPosLeft");
+    
+    
     var splashScreenWindow = document.getElementById("splashScreenWindow");
     var popupWindows = document.getElementById("popupWindows");
     var popupWindowBlocker = document.getElementById("popupWindowBlocker");
@@ -59,6 +77,8 @@ document.addEventListener("DOMContentLoaded", function () {
     var settingsButton = document.getElementById("settingsButton");
     var newTabButton = document.getElementById("newTabButton");
     var allTabButtons = document.getElementById("allTabButtons");
+    var closeButton = document.getElementById("closeButton");
+    var helpButton = document.getElementById("helpButton");
 
     // Create a browser (webview tag) new tab.
     var newTab = function (url) {
@@ -94,6 +114,13 @@ document.addEventListener("DOMContentLoaded", function () {
         tabButton.className = "tab";
 
         webview.setUserAgentOverride(webview.getUserAgent() + " SAPPlugin/" + appInfo.appVersion);
+
+        webview.addEventListener('permissionrequest', function(e) {
+            if (e.permission === 'fullscreen') {
+              toggleFullScreen();
+              e.request.allow();
+            }
+        });
 
         webview.addContentScripts([{
             name: 'keyMessaging',
@@ -340,6 +367,7 @@ document.addEventListener("DOMContentLoaded", function () {
             navigateTo(activeTab, activeTab.url);
         }
     });
+    
 
     //-----------------------------------------------
     // Toggle full screen (show or hide the toolbar).
@@ -399,6 +427,19 @@ document.addEventListener("DOMContentLoaded", function () {
     settingsButton.addEventListener("click", function (e) {
         toggleOptionsWindow();
     });
+    
+    closeButton.addEventListener("click", function (e) {
+        chrome.runtime.sendMessage({
+                method: "appExit",
+            }, function (response) {
+                console.info("Notified app exit");
+            });
+    });
+    
+    helpButton.addEventListener("click", function (e) {
+        toggleHelpWindow();
+    });
+    
     // Close options window and optionally save the settings.
     var closeOptionsWindow = function (save) {
         // Close the options window.
@@ -407,11 +448,19 @@ document.addEventListener("DOMContentLoaded", function () {
             if (save) {
                 // Check for changes.
                 var optionsChanged = false;
-                if (homePageUrlInput.value !== options.url) {
-                    urlChanged = true;
-                    optionsChanged = true;
-                    options.url = homePageUrlInput.value;
-                }
+                //if (homePageUrlInput.value !== options.url) {
+                urlChanged = true;
+                optionsChanged = true;
+                options.url = homePageUrlInput.value;
+                options.resWidthAuto = optionWidthResolutionAuto.checked;
+                options.resWidth = optionResolutionWidth.value;
+                options.resHeightAuto = optionHeightResolutionAuto.checked;
+                options.resHeight = optionResolutionHeight.value;
+                options.posTopAuto = optionPosTopAuto.checked;
+                options.posTop = optionPosTop.value;
+                options.posLeftAuto = optionPosLeftAuto.checked;
+                options.posLeft = optionPosLeft.value;
+                //}
 
                 // Save the options.
                 if (optionsChanged) {
@@ -491,11 +540,54 @@ document.addEventListener("DOMContentLoaded", function () {
         urlInput.focus();
     };
 
+
+    var hotkeyDownDelay = 100;
+    var isHotkeyDown = false;
+    var isHotkeyDownSetTimeout;
+    var afterHotkeyDelay = function(){
+      isHotkeyDown = true;
+      setTimeout(function(){
+            isHotkeyDown = false;
+        },hotkeyDownDelay)
+    }
+
+
     var onKeyHandler = function (e) {
-        if (e.keyCode === KEY_F1) { // Help (F1)
-            console.info("Toggle help window (F1)");
+      /*
+        if (e.ctrlKey && e.keyCode === KEY_F1) { // Help (F1)
+        
+            console.info("Toggle help window (Ctrl + F1)");
             toggleHelpWindow();
-        } else if (e.keyCode === KEY_F5 && e.ctrlKey === false) { // Reload page (F5)
+        }
+        else */
+        if (e.ctrlKey && e.keyCode === KEY_F4){
+            if(isHotkeyDown){
+                return;
+            }
+            else{
+                afterHotkeyDelay();
+            }
+            
+            console.info("Exit (Ctrl + F4)");
+            // Ask "main.js" to close this window.
+            chrome.runtime.sendMessage({
+                method: "appExit",
+            }, function (response) {
+                console.info("Notified app exit");
+            });
+        }
+        else if (e.ctrlKey && e.keyCode === KEY_F11){
+            if(isHotkeyDown){
+                return;
+            }
+            else{
+                afterHotkeyDelay();
+            }
+            console.info("Toggle full screen (Ctrl + F11)");
+            toggleFullScreen();
+        }
+        /*
+        else if (e.keyCode === KEY_F5 && e.ctrlKey === false) { // Reload page (F5)
             console.info("Reload page (F5)");
             if (activeTab) {
                 if (activeTab.hasLoadError) {
@@ -506,12 +598,14 @@ document.addEventListener("DOMContentLoaded", function () {
                     activeTab.webview.reload();
                 }
             }
-        } else if (e.altKey && e.keyCode === KEY_HOME) {  // Home page (Alt + Home)
+        }
+        else if (e.altKey && e.keyCode === KEY_HOME) {  // Home page (Alt + Home)
             console.info("Home page (Alt + Home)");
             if (activeTab) {
                 goHome();
             }
-        } else if (e.altKey && e.keyCode === KEY_F4) { // Exit (Alt + F4)
+        }
+        else if (e.altKey && e.keyCode === KEY_F4) { // Exit (Alt + F4)
             console.info("Exit (Alt + F4)");
             // Ask "main.js" to close this window.
             chrome.runtime.sendMessage({
@@ -564,51 +658,80 @@ document.addEventListener("DOMContentLoaded", function () {
                 switchTab(tab.webview.id);
             }
         }
+        */
     };
 
-    // Global keyboard handlers.
-    document.addEventListener("keydown", onKeyHandler, true);
-
     // Callback handler from "main.js" to notify when the app options have been changed.
-    chrome.runtime.onMessage.addListener(
-        function (request, sender, sendResponse) {
-            console.log("Received message: " + request.method);
-
-            if (request.method === "optionsChanged") {
-                // Store the new settings.
-                options = request.options;
-
-                console.info("Options changed: " + JSON.stringify(options));
-
-                // Update the options window.
-                homePageUrlInput.value = options.url;
-
-                // If we have not initialized the app yet do it now.
-                if (appInit) {
-                    // Create a new tab and navigate to the home page.
-                    appInit = false;
-                    newTab(options.url);
+    var keydownEventSet = false;
+    if(!keydownEventSet){
+        keydownEventSet = true;
+        // Global keyboard handlers.
+        // document.removeEventListener("keydown", onKeyHandler);
+        // document.addEventListener("keydown", onKeyHandler, true);
+        chrome.runtime.onMessage.addListener(
+            function (request, sender, sendResponse) {
+                console.log("Received message: " + request.method);
+    
+                if (request.method === "optionsChanged") {
+                    // Store the new settings.
+                    options = request.options;
+    
+                    console.info("Options changed: " + JSON.stringify(options));
+    
+                    // Update the options window.
+                    homePageUrlInput.value = options.url;
+                    
+                    optionWidthResolutionAuto.checked = options.resWidthAuto;
+                    optionResolutionWidth.value = options.resWidth;
+                    optionHeightResolutionAuto.checked = options.resHeightAuto;
+                    optionResolutionHeight.value = options.resHeight;
+                    
+                    optionPosTopAuto.checked = options.posTopAuto;
+                    optionPosTop.value = options.posTop;
+                    optionPosLeftAuto.checked = options.posLeftAuto;
+                    optionPosLeft.value = options.posLeft;
+    
+                    // If we have not initialized the app yet do it now.
+                    if (appInit) {
+                        // Create a new tab and navigate to the home page.
+                        appInit = false;
+                        newTab(options.url);
+                    }
+                } else if (request.method === "appInfoChanged") {
+                    // Update desktop size info.
+                    appInfo = request.appInfo;
+                    helpDesktopInfo.innerHTML = "Number of desktops: " + appInfo.displayCount + "<br />Original window resolution: " + appInfo.displayOriginalWidth + " x " + appInfo.displayOriginalHeight + " pixels.<br />Currnt window resolution: " + appInfo.displayWidth + " x " + appInfo.displayHeight + " pixels.";
+                    // Update app version.
+                    helpAppVersionInfo.innerHTML = "App version: " + appInfo.appVersion;
                 }
-            } else if (request.method === "appInfoChanged") {
-                // Update desktop size info.
-                appInfo = request.appInfo;
-                helpDesktopInfo.innerHTML = "Number of desktops: " + appInfo.displayCount + ", desktop resolution: " + appInfo.displayWidth + " x " + appInfo.displayHeight + " pixels.";
-                // Update app version.
-                helpAppVersionInfo.innerHTML = "App version: " + appInfo.appVersion;
-            } else if (request.method === 'keydownfrommain') {
-                console.log(request);
-                onKeyHandler(request.keyInfo);
-            }
-
-            // Respond back to the message.
-            sendResponse({});
-        });
+                else if(request.method === 'keydownfrommain'){ // || request.method === 'keydown'
+                    onKeyHandler(request.keyInfo);
+                }
+                
+                /*else if (request.method === 'keydownfrommain') {
+//                  //console.log(request);
+                    //onKeyHandler(request.keyInfo);
+                }
+                else if(request.method === 'keydown'){
+                   if(request.keyInfo.ctrlKey && request.keyInfo.keyCode === KEY_F11){
+                    console.info("Toggle full screen (Ctrl + F11)");
+                    toggleFullScreen();
+                    }
+                }*/
+    
+                // Respond back to the message.
+                sendResponse({});
+            });
+        }
 
     // Show the splash screen for 5 seconds.
-    setVisible(splashScreenWindow, true);
-    popupWindowBlocker.style.visibility = "visible";
-    popupWindows.style.pointerEvents = "none";  // Disable the mouse during splash screen.
+    /*
+    // setVisible(splashScreenWindow, true);
+    // popupWindowBlocker.style.visibility = "visible";
+    // popupWindows.style.pointerEvents = "none";  // Disable the mouse during splash screen.
     setTimeout(closeSplashScreen, 5000);
+    */
+    
     console.info("App window ready");
 
     // Tell "main.js" we are ready to navigate so we can load the app options.

@@ -24,6 +24,10 @@
  * @see app.html
  */
 chrome.app.runtime.onLaunched.addListener(function () {
+    var isNumeric = function(n) {
+       return !isNaN(parseFloat(n)) && isFinite(n);
+    }
+  
     console.info("Start application");
 
     // Screen info.
@@ -36,14 +40,32 @@ chrome.app.runtime.onLaunched.addListener(function () {
 
     // The app options amd default options.
     var defaultOptions = {
-        url: "http://www.sap.com"
+        url: "https://remotedesktop.google.com/access/",
+        resWidthAuto:true,
+        resWidth:3840,
+        resHeightAuto:true,
+        resHeight:1080,
+        posTopAuto:true,
+        posTop:0,
+        posLeftAuto:true,
+        posLeft:0
     };
     var options = {
-        url:defaultOptions.url
+        url:defaultOptions.url,
+        resWidthAuto:defaultOptions.resWidthAuto,
+        resWidth:defaultOptions.resWidth,
+        resHeightAuto:defaultOptions.resHeightAuto,
+        resHeight:defaultOptions.resHeight,
+        posTopAuto:defaultOptions.posTopAuto,
+        posTop:defaultOptions.posTop,
+        posLeftAuto:defaultOptions.posLeftAuto,
+        posLeft:defaultOptions.posLeft
     };
 
     // App info including the desktop size.
     var appInfo = {
+        displayOriginalWidth: 0,
+        displayOriginalHeight: 0,
         displayCount: 0,
         displayWidth: 0,
         displayHeight: 0,
@@ -56,6 +78,7 @@ chrome.app.runtime.onLaunched.addListener(function () {
 
     // Calculate the bounds of all displays "full screen" and then create the frameless "app.html" window.
     var createAppWindowFullScreen = function () {
+        console.log("createAppWindowFullScreen started");
         // Callback to detect the Windows displays and resize the "app.html" window to go across all of them.
         // @see: https://developer.chrome.com/apps/system_display#method-getInfo
         chrome.system.display.getInfo(function (displayInfo) {
@@ -100,9 +123,44 @@ chrome.app.runtime.onLaunched.addListener(function () {
                 appWidth += di.bounds.width;
                 appHeight = Math.min(appHeight, di.bounds.height);
             }
+            
+            appInfo.displayOriginalWidth = appWidth;
+            appInfo.displayOriginalHeight = appHeight;
+            
+            if(!options.resWidthAuto && isNumeric(options.resWidth)){
+                appWidth = Number(options.resWidth);
+            }
+            else if(!isNumeric(options.resWidth)){
+              console.log("resWidth is not number", options.resWidth);
+            }
+            
+            if(!options.resHeightAuto && isNumeric(options.resHeight)){
+                appHeight = Number(options.resHeight);
+            }
+            else if(!isNumeric(options.resHeight)){
+              console.log("resHeight is not number", options.resHeight);
+            }
+            var posTop = 0;
+            var posLeft = 0;
+            if(!options.posTopAuto && isNumeric(options.posTop)){
+                posTop = Number(options.resHeight);
+            }
+            else if(!isNumeric(options.posTop)){
+              console.log("posTop is not number", options.posTop);
+            }
+            
+            if(!options.posLeftAuto && isNumeric(options.posLeft)){
+                posLeft = Number(options.posLeft);
+            }
+            else if(!isNumeric(options.posLeft)){
+              console.log("posLeft is not number", options.posLeft);
+            }
+            
             console.info("Full Screen size:" +
                 "\n  Width:  " + appWidth + " pixels" +
-                "\n  Height: " + appHeight + " pixels");
+                "\n  Height: " + appHeight + " pixels" +
+                "\n  Top: " + posTop + " pixels" +
+                "\n  Left: " + posLeft + " pixels" );
 
             // Store the desktop info so we can pass that to "app.html".
             appInfo.displayCount = 1 + extendedDisplays.length;  // Number of displays we are using.
@@ -111,7 +169,7 @@ chrome.app.runtime.onLaunched.addListener(function () {
 
             // Create the frameless "app.html" window using full screen bounds.
             // @see: https://developer.chrome.com/apps/app_window
-            var bounds = {"top": 0, "left": 0, "width": appWidth, "height": appHeight};
+            var bounds = {"top": posTop, "left": posLeft, "width": appWidth, "height": appHeight};
             chrome.app.window.create("app.html", {
                 id: "app-window",
                 "frame": {
@@ -164,8 +222,21 @@ chrome.app.runtime.onLaunched.addListener(function () {
             console.log("Options saved:\n" + JSON.stringify(options));
         });
     };
-
+    
     // Load options (if settings have not been saved uses the default options).
+    async function asyncLoadOptions(key) {
+        return new Promise((resolve, reject) => {
+            try {
+                chrome.storage.sync.get(key, function (value) {
+                    resolve(value);
+                })
+            }
+            catch (ex) {
+                reject(ex);
+            }
+        });
+    }
+    
     var loadOptions = function () {
         chrome.storage.sync.get(defaultOptions, function (newOptions) {
             var error = chrome.runtime.lastError;
@@ -174,7 +245,10 @@ chrome.app.runtime.onLaunched.addListener(function () {
             }
 
             // Copy over the settings.
-            options.url = newOptions.url;
+            for(key in newOptions){
+              options[key] = newOptions[key];
+            }
+            //options.url = newOptions.url;
 
             console.log("Options loaded:\n" + JSON.stringify(options));
 
@@ -240,5 +314,11 @@ chrome.app.runtime.onLaunched.addListener(function () {
 
     // Create the full screen app window.
     console.info("Application ready");
-    createAppWindowFullScreen();
+
+    loadOptions();
+    console.log("loadOptions from main.js line 288", options);
+    
+    setTimeout(function(){
+        createAppWindowFullScreen();
+    }, 100);
 });

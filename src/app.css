@@ -39,6 +39,9 @@ td {
     box-sizing: border-box;
     float: left;
 }
+.window tr {
+   border-bottom:1px solid #ccc;
+}
 .tab {
     cursor: pointer;
     width: 100px;
@@ -137,10 +140,11 @@ td {
 }
 .webViews {
     position: absolute;
-    top: 8em;
+    top: 4em;
     left: 0px;
-    width: 100%;
-    height: calc(100% - 8em);
+    width: calc(100% - 4px);
+    height: calc(100% - 4em - 4px);
+    border:2px solid blue;
 }
 .webViewsFullScreen {
     position: absolute;
@@ -148,6 +152,7 @@ td {
     left: 0px;
     width: 100%;
     height: 100%;
+    border:0;
 }
 .webView {
     position: absolute;
@@ -187,8 +192,8 @@ td {
 .window {
     position: absolute;
     top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    left: 20px;
+    transform: translate(0%, -50%);
     padding: 10px;
     background: white;
     border-radius: 8px;
@@ -209,7 +214,7 @@ td {
 .button {
     cursor: pointer;
     width: 80px;
-    height: 38px;
+    height: 28px;
     color: #ffffff;
     background-color: #017fb5;
     border-color: #017fb5;
@@ -223,11 +228,12 @@ td {
     font-weight: bold;
 }
 .closeTabButton {
+    display: none;
     float: right;
     cursor: pointer;
     display: block;
-    width: 14px;
-    height: 14px;
+    width: 0px;
+    height: 0px;
     background: url(icon_close.svg) no-repeat right center;
     background-size: 100% 100%;
     padding-top: 7px;
@@ -260,7 +266,30 @@ td {
     background: url(icon_settings.svg);
     background-size: 28px 28px;
     background-repeat: no-repeat;
-    background-position: 5px 5px;    
+    background-position: 5px 5px;
+}
+.closeButton {
+    font-family:Tahoma;
+    cursor: pointer;
+    display: inline-block;
+    width: 38px;
+    height: 38px;
+    font-size:28px;
+    text-align:center;
+    color:#666;
+    padding:0;
+}
+.helpButton {
+    font-family: Tahoma;
+    cursor: pointer;
+    display: inline-block;
+    width: 38px;
+    height: 38px;
+    font-size: 14px;
+    text-align: center;
+    color: #666;
+    box-sizing: border-box;
+    padding: 8px 0 0 0;
 }
 .urlInput {
     width: 450px;
